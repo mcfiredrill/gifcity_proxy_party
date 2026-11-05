@@ -117,3 +117,57 @@ _build/prod/rel/gifcity_proxy_party/bin/gifcity_proxy_party start
 `PHX_HOST` controls the public HTTPS URLs returned to chat. Persist the generated
 secret in your deployment's secret store. Rate limiting for this public API can
 be configured at the reverse proxy; CORS does not restrict non-browser clients.
+
+## Heroku
+
+The included `Procfile` starts a Mix release with the HTTP server enabled.
+`elixir_buildpack.config` pins Elixir 1.15.8 / OTP 26.2 and enables release builds.
+`app.json` also describes the app for Heroku's dashboard deployment flow.
+Use the classic Elixir buildpack on Heroku-22 for this toolchain; no Node buildpack,
+database add-on, or migration command is needed.
+
+From a checkout with these files committed, create the app (choose a unique name):
+
+```sh
+heroku login
+heroku create YOUR_APP_NAME --stack heroku-22 --buildpack https://github.com/HashNuke/heroku-buildpack-elixir.git
+heroku apps:info --app YOUR_APP_NAME
+```
+
+Copy the hostname from the reported **Web URL**. Use its exact value, including
+any generated suffix, without `https://` or a trailing slash. Configure the app:
+
+```sh
+heroku config:set --app YOUR_APP_NAME \
+  MIX_ENV=prod \
+  PHX_HOST=YOUR_EXACT_HEROKU_HOSTNAME \
+  SECRET_KEY_BASE="$(mix phx.gen.secret)" \
+  CORS_ORIGINS='https://datafruits.fm,https://www.datafruits.fm,http://localhost:4200'
+
+git push heroku HEAD:main
+heroku ps:scale web=1 --app YOUR_APP_NAME
+heroku logs --tail --app YOUR_APP_NAME
+```
+
+For an existing app, use `heroku git:remote --app YOUR_APP_NAME`,
+`heroku stack:set heroku-22 --app YOUR_APP_NAME`, and
+`heroku buildpacks:set https://github.com/HashNuke/heroku-buildpack-elixir.git --app YOUR_APP_NAME`
+instead of `heroku create`. Set the config vars before pushing. Do not reset
+`SECRET_KEY_BASE` on subsequent deploys: existing chat image URLs depend on it.
+Heroku supplies `PORT`; do not set it yourself. The app listens on `0.0.0.0` and
+Heroku terminates HTTPS at its router.
+
+Verify the deployed app:
+
+```sh
+curl 'https://YOUR_EXACT_HEROKU_HOSTNAME/health'
+curl -i -H 'Origin: https://datafruits.fm' \
+  'https://YOUR_EXACT_HEROKU_HOSTNAME/search?q=pizza'
+```
+
+Point the Datafruits GIF adapter at `https://YOUR_EXACT_HEROKU_HOSTNAME`.
+If using a custom domain, configure it in Heroku and update `PHX_HOST` to that
+domain. Cache contents reset whenever a dyno restarts; each dyno has its own cache.
+
+References: [Elixir buildpack release configuration](https://github.com/HashNuke/heroku-buildpack-elixir#elixir-releases)
+and [Heroku buildpack management](https://devcenter.heroku.com/articles/managing-buildpacks).

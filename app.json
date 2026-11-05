@@ -1,0 +1,19 @@
+{
+  "name": "Gifcity Proxy Party",
+  "description": "GifCities search and image proxy for Datafruits chat",
+  "stack": "heroku-22",
+  "buildpacks": [
+    {"url": "https://github.com/HashNuke/heroku-buildpack-elixir.git"}
+  ],
+  "env": {
+    "MIX_ENV": {"value": "prod"},
+    "PHX_HOST": {
+      "description": "Public hostname only, without https:// or a path. Use the exact hostname from Heroku's Web URL."
+    },
+    "SECRET_KEY_BASE": {"generator": "secret"},
+    "CORS_ORIGINS": {
+      "value": "https://datafruits.fm,https://www.datafruits.fm,http://localhost:4200",
+      "description": "Comma-separated exact frontend origins. Change the localhost port if needed."
+    }
+  }
+}
